@@ -96,12 +96,70 @@ def move(state, direction):
     return None
 
 
+# DFS
+def dfs(initial_state):
+    global MaxFrontierSize, MaxSearchDepth, GoalNode
+    board_visited = set()
+    stack = list([PuzzleState(initial_state, None, None, 0, 0, 0)])
+    while stack:
+        node = stack.pop()
+        board_visited.add(node.map)
+        if node.state == GoalState:
+            GoalNode = node
+            return "Goal!"
+
+        possible_paths = reversed(get_possible_paths(node))
+        for path in possible_paths:
+            if path.map not in board_visited:
+                stack.append(path)
+                board_visited.add(path.map)
+                if path.depth > MaxSearchDepth:
+                    MaxSearchDepth = path.depth
+        if len(stack) > MaxFrontierSize:
+            MaxFrontierSize = len(stack)
+    return "No Solution"
+
+
+# Because there are 9! states can be reached in 8-puzzle, and the numbers of branch from each node is more than 2, so
+# the depth of the tree is smaller log2(9!) = 18.5, so the max depth of the tree is 19 (if we make a balance tree).
+Limit = 20
+
+
+def ids(initial_state):
+    global Limit, MaxSearchDepth
+
+    def dls(node, limit):
+        global MaxFrontierSize, GoalNode
+        if node.state == GoalState:
+            GoalNode = node
+            return "Goal!"
+
+        if limit == 0:
+            return "Cutoff"
+
+        cutoff_occurred = False
+        possible_paths = get_possible_paths(node)
+        for path in possible_paths:
+            _result = dls(path, limit - 1)
+            if _result == "Cutoff":
+                cutoff_occurred = True
+            elif _result == "Goal!":
+                return "Goal!"
+        return "Cutoff" if cutoff_occurred else "No Solution"
+
+    for depth in range(Limit):
+        result = dls(PuzzleState(initial_state, None, None, 0, 0, 0), depth)
+        if result != "Cutoff":
+            MaxSearchDepth = depth
+            return result
+
+
 def puzzle():
     global GoalNode
     global GoalState
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', action="store", dest="method", help="Method to use", type=str,
-                        choices=['bfs', 'dfs', 'ast', 'ida'])
+                        choices=['bfs', 'dfs', 'ast', 'ids'])
     parser.add_argument('-i', action="store", dest="initial_state", help="Initial state of the board", type=int,
                         nargs=9)
     parser.add_argument('-g', action="store", dest="goal_state", help="Goal state of the board", type=int, nargs=9)
@@ -114,6 +172,10 @@ def puzzle():
     start_time = timeit.default_timer()
     if function == 'bfs':
         bfs(initial_state)
+    elif function == 'dfs':
+        dfs(initial_state)
+    elif function == 'ids':
+        ids(initial_state)
     else:
         GoalNode = PuzzleState(GoalState, None, None, 0, 0, 0)
     stop = timeit.default_timer()
@@ -130,6 +192,5 @@ def puzzle():
     print("search_depth: {}".format(deep))
     print("max_search_depth: {}".format(MaxSearchDepth))
     print("running_time: {}".format(run_time))
-
 
 
