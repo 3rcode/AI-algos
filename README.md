@@ -1,2 +1,2 @@
-# AI_search_algorithms
+# AI_algorithms
  
